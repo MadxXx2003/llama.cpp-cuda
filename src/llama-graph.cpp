@@ -1742,10 +1742,15 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         case LLM_FFN_SILU:
             if (gate_exps) {
                 // Step35: per-layer clamp for routed experts
-                if (arch == LLM_ARCH_STEP35 && il >= 0) {
+                if ((arch == LLM_ARCH_STEP35 || arch == LLM_ARCH_MAPLE) && il >= 0) {
                     const float limit = hparams.swiglu_clamp_exp[il];
                     constexpr float eps = 1e-6f;
                     if (limit > eps) {
+                    if (arch == LLM_ARCH_MAPLE) {
+                        // Maple (MLX reference): silu(min(gate, +CLAMP)) * clip(up, -CLAMP, +CLAMP)
+                        cur = ggml_clamp(ctx0, cur, -INFINITY, limit);
+                        cb(cur, "ffn_moe_gate_clamped", il);
+                    }
                         ggml_tensor * gate_act = ggml_silu(ctx0, cur);
                         cb(gate_act, "ffn_moe_silu", il);
                         gate_act = ggml_clamp(ctx0, gate_act, -INFINITY, limit);
