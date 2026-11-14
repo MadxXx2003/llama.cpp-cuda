@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-windows-cuda-shared:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     
     steps:
       - name: Checkout Repository
@@ -16,6 +16,7 @@ jobs:
           submodules: recursive
 
       - name: Configure Git Identity & Apply Patches Safely
+        shell: bash
         run: |
           # Configure local git identity so 'git am' doesn't crash
           git config user.name "GitHub Action Runner"
@@ -43,45 +44,38 @@ jobs:
           fi
           shopt -u nullglob nocaseglob
 
-      - name: Install Dependencies & CUDA Toolkit
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64
-          
-          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
-          sudo dpkg -i cuda-keyring_1.1-1_all.deb
-          sudo apt-get update
-          
-          # Install only the core CUDA compiler and development libraries to avoid missing libtinfo5 errors
-          # Use the correct cuBLAS development package name for CUDA 12.4
-          sudo apt-get -y install cuda-nvcc-12-4 cuda-cudart-dev-12-4 libcublas-dev-12-4
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.16
+        with:
+          cuda: '12.4.0'
 
       - name: Configure CMake for Windows CUDA Shared Libraries
+        shell: pwsh
         run: |
-          export PATH=/usr/local/cuda-12.4/bin:$PATH
-          mkdir build && cd build
+          mkdir build
+          cd build
           
           # -DBUILD_SHARED_LIBS=ON tells CMake to compile .dll files instead of static archives
-          cmake .. \
-            -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
-            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
-            -DGGML_CUDA=ON \
+          cmake .. `
+            -G "Visual Studio 17 2022" `
+            -A x64 `
+            -DBUILD_SHARED_LIBS=ON `
+            -DGGML_CUDA=ON `
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Everything
+        shell: pwsh
         run: |
-          export PATH=/usr/local/cuda-12.4/bin:$PATH
-          cmake --build build --config Release -j $(nproc)
+          cmake --build build --config Release --parallel
 
       - name: Bundle DLLs, EXEs, and NVIDIA Runtimes
+        shell: pwsh
         run: |
-          mkdir -p final-release
+          New-Item -ItemType Directory -Force -Path final-release
           
-          # Copy all compiled executables and shared libraries (.dll)
-          find build/ -name "*.exe" -exec cp {} final-release/ \; 2>/dev/null || true
-          find build/ -name "*.dll" -exec cp {} final-release/ \; 2>/dev/null || true
-
+          # Copy all compiled executables and shared libraries (.dll) recursively from build output
+          Get-ChildItem -Path build -Recurse -Filter "*.exe" | Copy-Item -Destination final-release -Force
+          Get-ChildItem -Path build -Recurse -Filter "*.dll" | Copy-Item -Destination final-release -Force
 
       - name: Upload Windows Package Artifact
         uses: actions/upload-artifact@v4
