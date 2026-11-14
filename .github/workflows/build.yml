@@ -59,8 +59,10 @@ jobs:
           
           # CMake will now automatically detect MSVC and the CUDA toolkit via environment variables
           cmake .. `
-            -DBUILD_SHARED_LIBS=ON `
             -DGGML_CUDA=ON `
+            -DGGML_NATIVE=OFF `
+            -DGGML_BACKEND_DL=ON `
+            -DGGML_CPU_ALL_VARIANTS=ON `
             -DGGML_AVX512=OFF `
             -DGGML_AVX512_VBMI=OFF `
             -DGGML_AVX512_VNNI=OFF `
