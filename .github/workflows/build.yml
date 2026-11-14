@@ -61,6 +61,10 @@ jobs:
           cmake .. `
             -DBUILD_SHARED_LIBS=ON `
             -DGGML_CUDA=ON `
+            -DGGML_AVX512=OFF `
+            -DGGML_AVX512_VBMI=OFF `
+            -DGGML_AVX512_VNNI=OFF `
+            -DGGML_AVX512_BF16=OFF `
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Everything
