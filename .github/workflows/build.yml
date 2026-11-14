@@ -24,7 +24,7 @@ jobs:
 
           echo "Checking for patch files..."
           shopt -s nullglob nocaseglob
-          patches=(Patchs/*.patch patch/*.patch)
+          patches=(Patches/*.patch patch/*.patch)
           if [ ${#patches[@]} -gt 0 ]; then
             for p in "${patches[@]}"; do
               if [ -f "$p" ]; then
