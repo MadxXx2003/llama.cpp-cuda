@@ -1,0 +1,72 @@
+name: Build Windows CUDA DLLs and Binaries
+
+on:
+  push:
+    branches: [ "*" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows-cuda-shared:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply Patches from patch/ directory
+        run: |
+          echo "Checking for patch files..."
+          if [ -d "Patches" ] && [ "$(ls -A Patches/*.patch 2>/dev/null)" ]; then
+            for p in Patches/*.patch; do
+              echo "Applying patch: $p"
+              git apply "$p" || git am "$p" || exit 1
+            done
+            echo "All patches applied successfully."
+          else
+            echo "No patch files found in Patches/ directory."
+          fi
+
+      - name: Install Dependencies & CUDA Toolkit
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64
+          
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get -y install cuda-toolkit-12-4
+
+      - name: Configure CMake for Windows CUDA Shared Libraries
+        run: |
+          export PATH=/usr/local/cuda-12.4/bin:$PATH
+          mkdir build && cd build
+          
+          # -DBUILD_SHARED_LIBS=ON tells CMake to compile .dll files instead of static archives
+          cmake .. \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+            -DGGML_CUDA=ON \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Everything
+        run: |
+          export PATH=/usr/local/cuda-12.4/bin:$PATH
+          cmake --build build --config Release -j $(nproc)
+
+      - name: Bundle DLLs, EXEs, and NVIDIA Runtimes
+        run: |
+          mkdir -p final-release
+          
+          # Copy all compiled executables and shared libraries (.dll)
+          find build/ -name "*.exe" -exec cp {} final-release/ \; 2>/dev/null || true
+          find build/ -name "*.dll" -exec cp {} final-release/ \; 2>/dev/null || true
+
+
+      - name: Upload Windows Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-windows-cuda-shared-dlls
+          path: final-release/*
