@@ -53,7 +53,8 @@ jobs:
           sudo apt-get update
           
           # Install only the core CUDA compiler and development libraries to avoid missing libtinfo5 errors
-          sudo apt-get -y install cuda-nvcc-12-4 cuda-cudart-dev-12-4 cuda-cublas-dev-12-4
+          # Use the correct cuBLAS development package name for CUDA 12.4
+          sudo apt-get -y install cuda-nvcc-12-4 cuda-cudart-dev-12-4 libcublas-dev-12-4
 
       - name: Configure CMake for Windows CUDA Shared Libraries
         run: |
