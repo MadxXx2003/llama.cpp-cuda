@@ -15,6 +15,34 @@ jobs:
         with:
           submodules: recursive
 
+          
+      - name: Configure Git Identity & Apply Patches from Patchs directory
+        run: |
+          # Configure local git identity so 'git am' doesn't crash
+          git config user.name "GitHub Action Runner"
+          git config user.email "runner@actions.local"
+
+          echo "Checking for patch files..."
+          shopt -s nullglob nocaseglob
+          patches=(Patchs/*.patch patch/*.patch)
+          if [ ${#patches[@]} -gt 0 ]; then
+            for p in "${patches[@]}"; do
+              if [ -f "$p" ]; then
+                echo "Applying patch: $p"
+                # Try git apply first, then git am with 3-way merge fallback if possible
+                git apply --3way "$p" || git am "$p" || {
+                  echo "ERROR: Failed to apply patch $p. Check if your repository version matches the patch expectations."
+                  exit 1
+                }
+              fi
+            done
+            echo "All patches applied successfully."
+          else
+            echo "No patch files found in Patchs or patch directory."
+          fi
+          shopt -u nullglob nocaseglob
+
+          
       - name: Apply Patches from patch/ directory
         run: |
           echo "Checking for patch files..."
