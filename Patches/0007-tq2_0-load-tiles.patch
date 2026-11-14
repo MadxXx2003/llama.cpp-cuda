@@ -2,7 +2,7 @@ diff --git a/ggml/src/ggml-cuda/mmq.cuh b/ggml/src/ggml-cuda/mmq.cuh
 index 4231a5b..08b33fc 100644
 --- a/ggml/src/ggml-cuda/mmq.cuh
 +++ b/ggml/src/ggml-cuda/mmq.cuh
-@@ -395,6 +395,83 @@ template <int mmq_y, bool need_check> static __device__ __forceinline__ void loa
+@@ -472,6 +472,83 @@ template <int mmq_y, bool need_check> static __device__ __forceinline__ void loa
      }
  }
  
